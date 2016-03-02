@@ -14,16 +14,12 @@
 }
 __global__ void SomeTransform(char *input_gpu, int fsize) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
-	int num = int(ceil(fsize / 64.0));
 	if (idx < fsize && input_gpu[idx] != '\n') {
-		int finish = idx==63?fsize:(idx+1)*num;
-		for(int i = idx*num; i < finish; ++i){
-			char c = input_gpu[i];
+			char c = input_gpu[idx];
 			if (c >= 'a' && c <= 'z'){
 				c -= 32;
-				input_gpu[i] = c;
+				input_gpu[idx] = c;
 			}
-		}
 	}
 }
 int main(int argc, char **argv)
@@ -56,7 +52,9 @@ int main(int argc, char **argv)
 	// An example: transform the first 64 characters to '!'
 	// Don't transform over the tail
 	// And don't transform the line breaks
-	SomeTransform <<< 2, 32 >>>(input_gpu, fsize);
+	int blocksize = 8;
+	int nblock = fsize/blocksize + (fsize % blocksize == 0 ? 0 : 1);
+    SomeTransform <<< nblock,blocksize >>>(input_gpu, fsize);
 	//printf("%d\n",fsize);
 	puts(text_smem.get_cpu_ro());
 	return 0;
